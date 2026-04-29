@@ -18,14 +18,14 @@ winget install --id Git.Git -e --source winget
 
 Step 3: Goto users folder
 
-C:\Users\san8577
+C:\Users\san8577---{} replace this with your name
 Create a folder PlaywrightRepos
 
 ---
 
 Step 4: Restart
 
-Restart your computer (or at least close and reopen Command Prompt)
+Restart your computer (or at least close and reopen vs code)
 
 ---
 
@@ -37,6 +37,7 @@ node -v
 npm -v
 git --version
 
+if some numbers comes back you are good to go
 ---
 
 Step 6: Clone the Project
@@ -54,3 +55,8 @@ Step 7: Daily Use (Get Latest Updates)
 Whenever updates are made, run:
 
 git pull
+then 
+npm install
+
+Step 8: replace rename,js,ratesum.js and comprate.js 
+const BASE_DIR = "C:/Users/san8577/PlaywrightRepos/javascript/Compare"; with your user name

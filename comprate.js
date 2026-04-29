@@ -20,6 +20,25 @@ const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 
+// ================= REPO ACCESS CHECK =================
+async function checkRepoAccess() {
+  const REPO_CHECK_URL = "https://api.github.com/repos/sandhyauk/javascript";
+
+  try {
+    const response = await fetch(REPO_CHECK_URL, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error("Repository access verification failed.");
+    }
+
+    console.log("✅ Repository access verified.");
+  } catch {
+    throw new Error("Repository access verification failed.");
+  }
+}
+
+// =====================================================
+
 const BASE_DIR = "C:/Users/san8577/PlaywrightRepos/javascript/Compare";
 
 const ENABLE_SPECIAL_MASTER_EXTRA_CATEGORY_IGNORE = false;
@@ -831,4 +850,12 @@ function main() {
   console.log(`Done. Processed: ${processed}, Skipped: ${skipped}`);
 }
 
-main();
+(async () => {
+  try {
+    await checkRepoAccess();  // repo/public check runs first
+    main();                   // your existing comrate.js logic
+  } catch (err) {
+    console.log("🚫 " + err.message);
+    process.exitCode = 1;
+  }
+})();
