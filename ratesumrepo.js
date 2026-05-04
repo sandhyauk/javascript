@@ -6,7 +6,7 @@
  * 1. Missing in export
  * 2. Extra in export
  * 3. Mismatches
- * 4. Negative values in master/export
+ * 4. Negative values in master/export - controlled by ENABLE_NEGATIVE_CHECK
  * 5. STRICT ZERO CHECK:
  *    - blank and 0.00 are NOT treated the same
  *    - master blank vs export 0.00 is counted as EXTRA
@@ -17,16 +17,39 @@ const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 
+async function checkRepoAccess() {
+  const REPO_CHECK_URL = "https://api.github.com/repos/sandhyauk/javascript";
+
+  try {
+    const response = await fetch(REPO_CHECK_URL, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error("Repository access verification failed..");
+    }
+
+    console.log("✅ Repository access verified.");
+  } catch {
+    throw new Error("Repository access verification failed.");
+  }
+}
+
 const BASE_DIR = "C:/Users/san8577/PlaywrightRepos/javascript/Compare";
 
-const ENABLE_SPECIAL_MASTER_EXTRA_CATEGORY_IGNORE = false;
+/**
+ * NEGATIVE CHECK TOGGLE
+ * false = do not check negatives and do not show Negatives:0
+ * true  = check negatives and show Negatives count/details
+ */
+const ENABLE_NEGATIVE_CHECK = false;
+
+const ENABLE_SPECIAL_MASTER_EXTRA_CATEGORY_IGNORE = true;
 
 const MEX_MATCHES = new Set([
   "M001", "M002", "M012", "M024", "M028", "M036",
   "M048", "M053", "M054", "M066", "M075", "M079",
 ]);
 
-const MEX_MASTER_EXTRA_CATEGORIES = new Set(["HOSADA", "VIPADA", "MEDADA"]);
+const MEX_MASTER_EXTRA_CATEGORIES = new Set([ "HOSADA", "VIPADA", "MEDADA"]);
 const NON_MEX_MASTER_EXTRA_CATEGORIES = new Set(["HOSWH", "HOSWAP"]);
 
 const ANSI = { red: "\x1b[31m", reset: "\x1b[0m" };
@@ -491,7 +514,7 @@ function loadTableMapFromWorkbook({
         source,
       };
 
-      if (p < 0) {
+      if (ENABLE_NEGATIVE_CHECK && p < 0) {
         negatives.push(rowObj);
       }
 
@@ -528,10 +551,12 @@ function compareSummary(currency, masterTag, masterPath, masterTabName, exportPa
   let extra = 0;
   let mismatches = 0;
 
-  const negativeIssues = [
-    ...masterLoaded.negatives,
-    ...exportLoaded.negatives,
-  ];
+  const negativeIssues = ENABLE_NEGATIVE_CHECK
+    ? [
+        ...masterLoaded.negatives,
+        ...exportLoaded.negatives,
+      ]
+    : [];
 
   let ignoredMasterExtras = 0;
   const ignoredCategoriesFound = new Set();
@@ -549,7 +574,6 @@ function compareSummary(currency, masterTag, masterPath, masterTabName, exportPa
         continue;
       }
 
-      // master has real value including 0.00, export does not have it
       missing++;
       continue;
     }
@@ -557,7 +581,6 @@ function compareSummary(currency, masterTag, masterPath, masterTabName, exportPa
     const mVal = m.price;
     const eVal = e.price;
 
-    // strict compare: blank is never stored in map, 0.00 is stored as 0
     if (mVal !== eVal) {
       mismatches++;
     }
@@ -565,7 +588,6 @@ function compareSummary(currency, masterTag, masterPath, masterTabName, exportPa
 
   for (const [k, e] of exportMap.entries()) {
     if (!masterMap.has(k)) {
-      // export has real value including 0.00, master does not have it
       extra++;
     }
   }
@@ -632,6 +654,7 @@ function findExports(files, masterTag, tokens) {
 }
 
 function printNegativeIssues(r) {
+  if (!ENABLE_NEGATIVE_CHECK) return;
   if (!r.negativeIssues || r.negativeIssues.length === 0) return;
 
   console.log(`      NEGATIVE VALUES FOUND:`);
@@ -654,7 +677,9 @@ function printMasterBlock({ masterFile, usdFile, cadFile, mxnFile, usdSum, cadSu
 
     return `  ${r.currency} -> Missing in export:${redIfNonZero(r.missing)} | Extra in export:${redIfNonZero(
       r.extra
-    )} | Mismatches:${redIfNonZero(r.mismatches)} | Negatives:${redIfNonZero(r.negatives)}`;
+    )} | Mismatches:${redIfNonZero(r.mismatches)}${
+      ENABLE_NEGATIVE_CHECK ? ` | Negatives:${redIfNonZero(r.negatives)}` : ""
+    }`;
   };
 
   const ignoredLine = (r) => {
@@ -763,4 +788,12 @@ function main() {
   console.log(`\nDone. Processed masters: ${processed}, Skipped masters: ${skipped}`);
 }
 
-main();
+(async () => {
+  try {
+    await checkRepoAccess();
+    main();
+  } catch (err) {
+    console.log("🚫 " + err.message);
+    process.exitCode = 1;
+  }
+})();

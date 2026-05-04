@@ -10,7 +10,7 @@
  *    - master-only 0.00 is reported as MISSING_IN_EXPORT
  *
  * 2. NEGATIVE VALUE CHECK:
- *    - any value < 0 in master or export is reported as NEGATIVE_VALUE
+ *    - controlled by ENABLE_NEGATIVE_CHECK
  *
  * Run:
  *   node comrate.js
@@ -20,26 +20,14 @@ const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 
-// ================= REPO ACCESS CHECK =================
-async function checkRepoAccess() {
-  const REPO_CHECK_URL = "https://api.github.com/repos/sandhyauk/javascript";
-
-  try {
-    const response = await fetch(REPO_CHECK_URL, { cache: "no-store" });
-
-    if (!response.ok) {
-      throw new Error("Repository access verification failed.");
-    }
-
-    console.log("✅ Repository access verified.");
-  } catch {
-    throw new Error("Repository access verification failed.");
-  }
-}
-
-// =====================================================
-
 const BASE_DIR = "C:/Users/san8577/PlaywrightRepos/javascript/Compare";
+
+/**
+ * NEGATIVE CHECK TOGGLE
+ * false = do not check negatives and do not show negatives in report/CSV
+ * true  = check negatives and show negatives in report/CSV
+ */
+const ENABLE_NEGATIVE_CHECK = false;
 
 const ENABLE_SPECIAL_MASTER_EXTRA_CATEGORY_IGNORE = false;
 
@@ -511,7 +499,7 @@ function loadTableMapFromWorkbook({
         source,
       };
 
-      if (p < 0) {
+      if (ENABLE_NEGATIVE_CHECK && p < 0) {
         negatives.push(obj);
       }
 
@@ -549,7 +537,10 @@ function compare(currency, masterTag, masterPath, masterTabName, exportPath) {
   const miss = [];
   const extra = [];
   const ignoredMasterExtra = [];
-  const negatives = [...masterLoaded.negatives, ...exportLoaded.negatives];
+
+  const negatives = ENABLE_NEGATIVE_CHECK
+    ? [...masterLoaded.negatives, ...exportLoaded.negatives]
+    : [];
 
   for (const [k, m] of masterMap.entries()) {
     const e = exportMap.get(k);
@@ -588,7 +579,11 @@ function printCurrencyReport(r) {
   console.log(`Missing in EXPORT (present in MASTER, not in export): ${r.miss.length}`);
   console.log(`Extra in EXPORT (present in export, not in MASTER): ${r.extra.length}`);
   console.log(`Value mismatches: ${r.mism.length}`);
-  console.log(`Negative values: ${(r.negatives || []).length}`);
+
+  if (ENABLE_NEGATIVE_CHECK) {
+    console.log(`Negative values: ${(r.negatives || []).length}`);
+  }
+
   console.log(`Identified as extra in master (ignored): ${(r.ignoredMasterExtra || []).length}`);
 
   if (r.error) {
@@ -608,12 +603,14 @@ function printCurrencyReport(r) {
     }
   };
 
-  showList(
-    "NEGATIVE VALUES",
-    r.negatives || [],
-    (x) => `${x.source.toUpperCase()} | Row ${x.rowNumber} Col ${x.colNumber} | ${x.aud} | ${x.tariff} | ${x.seat} => ${x.price}`,
-    ANSI.red
-  );
+  if (ENABLE_NEGATIVE_CHECK) {
+    showList(
+      "NEGATIVE VALUES",
+      r.negatives || [],
+      (x) => `${x.source.toUpperCase()} | Row ${x.rowNumber} Col ${x.colNumber} | ${x.aud} | ${x.tariff} | ${x.seat} => ${x.price}`,
+      ANSI.red
+    );
+  }
 
   showList(
     "IDENTIFIED AS EXTRA IN MASTER (IGNORED)",
@@ -662,20 +659,22 @@ function writeCsv(results, csvPath) {
       continue;
     }
 
-    for (const x of r.negatives || []) {
-      rows.push([
-        r.currency,
-        "NEGATIVE_VALUE",
-        x.aud,
-        x.tariff,
-        x.seat,
-        x.source === "master" ? x.price : "",
-        x.source === "export" ? x.price : "",
-        x.source,
-        x.rowNumber,
-        x.colNumber,
-        "",
-      ]);
+    if (ENABLE_NEGATIVE_CHECK) {
+      for (const x of r.negatives || []) {
+        rows.push([
+          r.currency,
+          "NEGATIVE_VALUE",
+          x.aud,
+          x.tariff,
+          x.seat,
+          x.source === "master" ? x.price : "",
+          x.source === "export" ? x.price : "",
+          x.source,
+          x.rowNumber,
+          x.colNumber,
+          "",
+        ]);
+      }
     }
 
     for (const x of r.ignoredMasterExtra || []) {
@@ -850,12 +849,4 @@ function main() {
   console.log(`Done. Processed: ${processed}, Skipped: ${skipped}`);
 }
 
-(async () => {
-  try {
-    await checkRepoAccess();  // repo/public check runs first
-    main();                   // your existing comrate.js logic
-  } catch (err) {
-    console.log("🚫 " + err.message);
-    process.exitCode = 1;
-  }
-})();
+main();

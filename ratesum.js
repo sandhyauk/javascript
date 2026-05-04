@@ -6,7 +6,7 @@
  * 1. Missing in export
  * 2. Extra in export
  * 3. Mismatches
- * 4. Negative values in master/export
+ * 4. Negative values in master/export - controlled by ENABLE_NEGATIVE_CHECK
  * 5. STRICT ZERO CHECK:
  *    - blank and 0.00 are NOT treated the same
  *    - master blank vs export 0.00 is counted as EXTRA
@@ -17,23 +17,14 @@ const fs = require("fs");
 const path = require("path");
 const XLSX = require("xlsx");
 
-async function checkRepoAccess() {
-  const REPO_CHECK_URL = "https://api.github.com/repos/sandhyauk/javascript";
-
-  try {
-    const response = await fetch(REPO_CHECK_URL, { cache: "no-store" });
-
-    if (!response.ok) {
-      throw new Error("Repository access verification failed..");
-    }
-
-    console.log("✅ Repository access verified.");
-  } catch {
-    throw new Error("Repository access verification failed.");
-  }
-}
-
 const BASE_DIR = "C:/Users/san8577/PlaywrightRepos/javascript/Compare";
+
+/**
+ * NEGATIVE CHECK TOGGLE
+ * false = do not check negatives and do not show Negatives:0
+ * true  = check negatives and show Negatives count/details
+ */
+const ENABLE_NEGATIVE_CHECK = false;
 
 const ENABLE_SPECIAL_MASTER_EXTRA_CATEGORY_IGNORE = false;
 
@@ -507,7 +498,7 @@ function loadTableMapFromWorkbook({
         source,
       };
 
-      if (p < 0) {
+      if (ENABLE_NEGATIVE_CHECK && p < 0) {
         negatives.push(rowObj);
       }
 
@@ -544,10 +535,12 @@ function compareSummary(currency, masterTag, masterPath, masterTabName, exportPa
   let extra = 0;
   let mismatches = 0;
 
-  const negativeIssues = [
-    ...masterLoaded.negatives,
-    ...exportLoaded.negatives,
-  ];
+  const negativeIssues = ENABLE_NEGATIVE_CHECK
+    ? [
+        ...masterLoaded.negatives,
+        ...exportLoaded.negatives,
+      ]
+    : [];
 
   let ignoredMasterExtras = 0;
   const ignoredCategoriesFound = new Set();
@@ -648,6 +641,7 @@ function findExports(files, masterTag, tokens) {
 }
 
 function printNegativeIssues(r) {
+  if (!ENABLE_NEGATIVE_CHECK) return;
   if (!r.negativeIssues || r.negativeIssues.length === 0) return;
 
   console.log(`      NEGATIVE VALUES FOUND:`);
@@ -670,7 +664,9 @@ function printMasterBlock({ masterFile, usdFile, cadFile, mxnFile, usdSum, cadSu
 
     return `  ${r.currency} -> Missing in export:${redIfNonZero(r.missing)} | Extra in export:${redIfNonZero(
       r.extra
-    )} | Mismatches:${redIfNonZero(r.mismatches)} | Negatives:${redIfNonZero(r.negatives)}`;
+    )} | Mismatches:${redIfNonZero(r.mismatches)}${
+      ENABLE_NEGATIVE_CHECK ? ` | Negatives:${redIfNonZero(r.negatives)}` : ""
+    }`;
   };
 
   const ignoredLine = (r) => {
@@ -779,12 +775,4 @@ function main() {
   console.log(`\nDone. Processed masters: ${processed}, Skipped masters: ${skipped}`);
 }
 
-(async () => {
-  try {
-    await checkRepoAccess();
-    main();
-  } catch (err) {
-    console.log("🚫 " + err.message);
-    process.exitCode = 1;
-  }
-})();
+main();

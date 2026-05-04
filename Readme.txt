@@ -46,7 +46,7 @@ Open terminal
 type cd C:\Users\san8577\PlaywrightRepos
 git clone https://github.com/sandhyauk/javascript.git
 type cd C:\Users\san8577\PlaywrightRepos\javascript
-npm install
+npm install or npm install xlsx
 
 ---
 
@@ -60,3 +60,5 @@ npm install
 
 Step 8: replace rename,js,ratesum.js and comprate.js 
 const BASE_DIR = "C:/Users/san8577/PlaywrightRepos/javascript/Compare"; with your user name
+
+
