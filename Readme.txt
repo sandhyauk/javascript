@@ -46,7 +46,7 @@ Open terminal
 type cd C:\Users\san8577\PlaywrightRepos
 git clone https://github.com/sandhyauk/javascript.git
 type cd C:\Users\san8577\PlaywrightRepos\javascript
-npm install or npm install xlsx
+npm install or npm install xlsx if error
 
 ---
 
