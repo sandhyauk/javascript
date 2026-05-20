@@ -1,0 +1,22 @@
+Open terminal
+type cd C:\Users\{username}\PlaywrightRepos
+git clone https://github.com/sandhyauk/javascript.git
+type cd C:\Users\{username}\PlaywrightRepos\javascript
+
+IF ERROR - npm install xlsx
+
+---
+
+Step 7: Daily Use (Get Latest Updates)
+
+Whenever updates are made, run:
+
+git pull
+then 
+npm install xlsx
+
+Step 8: replace rename,js,ratesum.js and comprate.js 
+const BASE_DIR = "C:/Users/san8577/PlaywrightRepos/javascript/Compare"; with your user name
+
+Make sure folder compare has convert folder 
+
